@@ -30,7 +30,7 @@ type IGrid interface {
 	H() int
 	Get(int, int) IComponent
 	AddC(IComponent, []int, float64)
-	GetC(IComponent, []int) IComponent
+	GetM(IComponent, []int) []IComponent
 	AddXY(int, int, float64)
 }
 
@@ -41,16 +41,19 @@ type Grid struct {
 
 // ================
 type IComponent interface {
+	X() int
+	Y() int
 	Step() bool
 	ToString() string
 	Add(float64)
-	Direction() int
+	Directions() []int
 }
 
 // ================
 type Connection struct {
 	gridRef    IGrid
-	direction  []int // TODO: handle multiple
+	x, y       int
+	directions []int // TODO: handle multiple
 	energy     float64
 	nextEnergy float64
 }
@@ -62,28 +65,35 @@ func (c *Connection) Step() bool {
 	if c.energy == 0 {
 		return false
 	}
-	if c.direction != DirectionNone {
-		c.gridRef.AddC(c, DirectionDXY[c.direction], c.energy)
+	if len(c.directions) > 0 {
+		c.gridRef.AddC(c, c.directions, c.energy)
 		return true
 	}
-	// Look at neighbors
+	// TODO: Sinks
+	// Look for neighbors to transfer energy
 	// Prioritise those without direction
-	valid := []int{}
+	nbs := []IComponent{}
 	for i := DirectionNone + 1; i < DirectionLast; i++ {
-		nb := c.gridRef.GetC(c, DirectionDXY[i])
-		if nb != nil && nb.Direction() != DirectionNone {
-			valid = append(valid, i)
+		nb := c.gridRef.Get(c.X()+DirectionDXY[i][0], c.Y()+DirectionDXY[i][1])
+		if nb != nil && len(nb.Directions()) > 0 {
+			nbs = append(nbs, nb)
 		}
 	}
-	if len(valid) == 0 {
+	// Look for any neighbor, even those with direction
+	if len(nbs) == 0 {
 		for i := DirectionNone + 1; i < DirectionLast; i++ {
-			nb := c.gridRef.GetC(c, DirectionDXY[i])
+			nb := c.gridRef.Get(c.X()+DirectionDXY[i][0], c.Y()+DirectionDXY[i][1])
 			if nb != nil {
-				valid = append(valid, i)
+				nbs = append(nbs, nb)
 			}
 		}
 	}
-	if len(valid) > 0 {
+	// Add to neighbors
+	if len(nbs) > 0 {
+		for _, nb := range nbs {
+			nb.Add(c.energy / float64(len(nbs)))
+		}
+		return true
 	}
 	return false
 }
@@ -91,13 +101,26 @@ func (c *Connection) Step() bool {
 func (c *Connection) Add(energy float64) {
 	c.nextEnergy += energy
 }
-func (c *Connection) Direction() int {
-	return c.direction
+
+func (c *Connection) Directions() []int {
+	return c.directions
+}
+
+func (c *Connection) X() int {
+	return c.x
+}
+
+func (c *Connection) Y() int {
+	return c.y
 }
 
 func (c *Connection) ToString() string {
 	if c.energy == 0 {
-		return DirectionName[c.direction]
+		ret := ""
+		for i := range c.directions {
+			ret += DirectionName[c.directions[i]]
+		}
+		return ret
 	}
 	return fmt.Sprintf("%.1f", c.energy)
 }
