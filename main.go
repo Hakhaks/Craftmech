@@ -36,7 +36,52 @@ type IGrid interface {
 
 // ================
 type Grid struct {
-	c [gridW][gridH]IComponent
+	c [][]IComponent
+}
+
+func MakeGrid(w, h int) *Grid {
+	g := &Grid{}
+	g.c = make([][]IComponent, gridW)
+	for x := range gridW {
+		g.c[x] = make([]IComponent, gridH)
+	}
+	return g
+}
+
+// AddC implements IGrid.
+func (g *Grid) AddC(IComponent, []int, float64) {
+	// TODO:
+	panic("unimplemented")
+}
+
+// AddXY implements IGrid.
+func (g *Grid) AddXY(int, int, float64) {
+	// TODO:
+	panic("unimplemented")
+}
+
+// Get implements IGrid.
+func (g *Grid) Get(int, int) IComponent {
+	// TODO:
+	panic("unimplemented")
+}
+
+// GetM implements IGrid.
+func (g *Grid) GetM(IComponent, []int) []IComponent {
+	// TODO:
+	panic("unimplemented")
+}
+
+// H implements IGrid.
+func (g *Grid) H() int {
+	// TODO:
+	panic("unimplemented")
+}
+
+// W implements IGrid.
+func (g *Grid) W() int {
+	// TODO:
+	panic("unimplemented")
 }
 
 // ================
@@ -53,7 +98,7 @@ type IComponent interface {
 type Connection struct {
 	gridRef    IGrid
 	x, y       int
-	directions []int // TODO: handle multiple
+	directions []int
 	energy     float64
 	nextEnergy float64
 }
@@ -65,34 +110,28 @@ func (c *Connection) Step() bool {
 	if c.energy == 0 {
 		return false
 	}
-	if len(c.directions) > 0 {
-		c.gridRef.AddC(c, c.directions, c.energy)
-		return true
-	}
-	// TODO: Sinks
-	// Look for neighbors to transfer energy
-	// Prioritise those without direction
-	nbs := []IComponent{}
-	for i := DirectionNone + 1; i < DirectionLast; i++ {
-		nb := c.gridRef.Get(c.X()+DirectionDXY[i][0], c.Y()+DirectionDXY[i][1])
-		if nb != nil && len(nb.Directions()) > 0 {
-			nbs = append(nbs, nb)
-		}
-	}
-	// Look for any neighbor, even those with direction
-	if len(nbs) == 0 {
+	if len(c.directions) == 0 {
+		// Look for neighbors to set direction
+		// Prioritise those without direction
 		for i := DirectionNone + 1; i < DirectionLast; i++ {
 			nb := c.gridRef.Get(c.X()+DirectionDXY[i][0], c.Y()+DirectionDXY[i][1])
-			if nb != nil {
-				nbs = append(nbs, nb)
+			if nb != nil && len(nb.Directions()) > 0 {
+				c.directions = append(c.directions, i)
+			}
+		}
+		// Look for any neighbor, even those with direction
+		if len(c.directions) == 0 {
+			for i := DirectionNone + 1; i < DirectionLast; i++ {
+				nb := c.gridRef.Get(c.X()+DirectionDXY[i][0], c.Y()+DirectionDXY[i][1])
+				if nb != nil {
+					c.directions = append(c.directions, i)
+				}
 			}
 		}
 	}
-	// Add to neighbors
-	if len(nbs) > 0 {
-		for _, nb := range nbs {
-			nb.Add(c.energy / float64(len(nbs)))
-		}
+	// With direction set, neighbors for energy transfer is determined
+	if len(c.directions) > 0 {
+		c.gridRef.AddC(c, c.directions, c.energy)
 		return true
 	}
 	return false
@@ -140,13 +179,7 @@ func (g *Generator) ToString() string {
 // ================
 func main() {
 	// Init grid
-	grid := make([][]IComponent, gridW)
-	for x := range grid {
-		grid[x] = make([]IComponent, gridH)
-		for y := range grid[x] {
-			grid[x][y] = &Connection{}
-		}
-	}
+	grid := MakeGrid(gridW, gridH)
 	// Print grid
 	printGrid(grid)
 	// TODO:
@@ -154,11 +187,17 @@ func main() {
 	// Simulate grid
 }
 
-func printGrid(grid [][]IComponent) {
-	for x := range grid {
-		for y := range grid[x] {
-			fmt.Printf(" %v ", grid[x][y].ToString())
+func printGrid(grid IGrid) {
+	for x := range gridW {
+		for y := range gridH {
+			fmt.Printf(" %v ", grid.Get(x, y).ToString())
 		}
 		fmt.Println("")
+	}
+}
+
+func Assert(b bool) {
+	if !b {
+		panic("Assertion failed")
 	}
 }
