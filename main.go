@@ -7,8 +7,9 @@ import (
 // A CRUDE AWAKENING
 
 const (
-	gridW = 30
-	gridH = 30
+	gridW   = 30
+	gridH   = 30
+	maxIter = 10
 )
 
 // ================
@@ -28,19 +29,20 @@ var DirectionDXY = [][]int{{0, 0}, {-1, 0}, {0, 1}, {1, 0}, {0, -1}}
 type IGrid interface {
 	W() int
 	H() int
+	Step() bool
 	Get(int, int) IComponent
 	AddC(IComponent, []int, float64)
-	GetM(IComponent, []int) []IComponent
 	AddXY(int, int, float64)
 }
 
 // ================
 type Grid struct {
-	c [][]IComponent
+	w, h int
+	c    [][]IComponent
 }
 
 func MakeGrid(w, h int) *Grid {
-	g := &Grid{}
+	g := &Grid{w: w, h: h}
 	g.c = make([][]IComponent, gridW)
 	for x := range gridW {
 		g.c[x] = make([]IComponent, gridH)
@@ -48,41 +50,45 @@ func MakeGrid(w, h int) *Grid {
 	return g
 }
 
-// AddC implements IGrid.
-func (g *Grid) AddC(IComponent, []int, float64) {
-	// TODO:
-	panic("unimplemented")
+func (g *Grid) Step() bool {
+	anyChange := false
+	for x := range g.w {
+		for y := range g.w {
+			c := g.c[x][y]
+			if c != nil {
+				anyChange = c.Step() || anyChange
+			}
+		}
+	}
+	return anyChange
 }
 
-// AddXY implements IGrid.
-func (g *Grid) AddXY(int, int, float64) {
-	// TODO:
-	panic("unimplemented")
+func (g *Grid) AddC(source IComponent, directions []int, energy float64) {
+
+	// Add energy from source to directions
+	for di := range directions {
+		d := DirectionDXY[directions[di]]
+		g.AddXY(source.X()+d[0], source.Y()+d[1], energy/float64(len(directions)))
+	}
 }
 
-// Get implements IGrid.
-func (g *Grid) Get(int, int) IComponent {
-	// TODO:
-	panic("unimplemented")
+func (g *Grid) AddXY(x int, y int, energy float64) {
+	g.Get(x, y).Add(energy)
 }
 
-// GetM implements IGrid.
-func (g *Grid) GetM(IComponent, []int) []IComponent {
-	// TODO:
-	panic("unimplemented")
+func (g *Grid) Get(x int, y int) IComponent {
+	if !g.InBounds(x, y) {
+		return nil
+	}
+	return g.c[x][y]
 }
 
-// H implements IGrid.
-func (g *Grid) H() int {
-	// TODO:
-	panic("unimplemented")
+func (g *Grid) InBounds(x int, y int) bool {
+	return x >= 0 && y >= 0 && x < g.w && y < g.h
 }
 
-// W implements IGrid.
-func (g *Grid) W() int {
-	// TODO:
-	panic("unimplemented")
-}
+func (g *Grid) H() int { return g.h }
+func (g *Grid) W() int { return g.w }
 
 // ================
 type IComponent interface {
@@ -178,19 +184,28 @@ func (g *Generator) ToString() string {
 
 // ================
 func main() {
-	// Init grid
 	grid := MakeGrid(gridW, gridH)
-	// Print grid
-	printGrid(grid)
-	// TODO:
-	// Flood fill
-	// Simulate grid
+	// TODO: add components
+	// TODO: add initial energy
+	for iter := 0; iter < maxIter; iter++ {
+		printGrid(grid, iter)
+		if !grid.Step() {
+			fmt.Println("No further grid changes; Terminating simulation")
+			break
+		}
+	}
 }
 
-func printGrid(grid IGrid) {
+func printGrid(grid IGrid, iter int) {
+	fmt.Printf("Grid, iter %v\n", iter)
 	for x := range gridW {
 		for y := range gridH {
-			fmt.Printf(" %v ", grid.Get(x, y).ToString())
+			c := grid.Get(x, y)
+			str := "|   "
+			if c != nil {
+				str = fmt.Sprintf(" %v ", c.ToString())
+			}
+			fmt.Print(str)
 		}
 		fmt.Println("")
 	}
