@@ -63,9 +63,8 @@ func (g *Grid) Step() bool {
 	return anyChange
 }
 
+// Add energy from source to directions
 func (g *Grid) AddC(source IComponent, directions []int, energy float64) {
-
-	// Add energy from source to directions
 	for di := range directions {
 		d := DirectionDXY[directions[di]]
 		g.AddXY(source.X()+d[0], source.Y()+d[1], energy/float64(len(directions)))
@@ -74,6 +73,12 @@ func (g *Grid) AddC(source IComponent, directions []int, energy float64) {
 
 func (g *Grid) AddXY(x int, y int, energy float64) {
 	g.Get(x, y).Add(energy)
+}
+
+func (g *Grid) Set(c IComponent) {
+	x, y := c.X(), c.Y()
+	Assert(g.c[x][y] == nil)
+	g.c[x][y] = c
 }
 
 func (g *Grid) Get(x int, y int) IComponent {
