@@ -106,12 +106,18 @@ type IComponent interface {
 }
 
 // ================
-type Connection struct {
-	gridRef    IGrid
-	x, y       int
+type Component struct {
+	gridRef IGrid
+	x, y    int
+
 	directions []int
 	energy     float64
 	nextEnergy float64
+}
+
+// ================
+type Connection struct {
+	Component
 }
 
 func (c *Connection) Step() bool {
@@ -177,6 +183,7 @@ func (c *Connection) ToString() string {
 
 // ================
 type Generator struct {
+	Component
 }
 
 func (g *Generator) Step() bool {
@@ -191,8 +198,10 @@ func (g *Generator) ToString() string {
 func main() {
 	grid := MakeGrid(gridW, gridH)
 	// TODO: add components
+	c := &Connection{Component{gridRef: grid, x: 0, y: 0}}
+	grid.Set(c)
 	// TODO: add initial energy
-	for iter := 0; iter < maxIter; iter++ {
+	for iter := range maxIter {
 		printGrid(grid, iter)
 		if !grid.Step() {
 			fmt.Println("No further grid changes; Terminating simulation")
