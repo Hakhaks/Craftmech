@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 )
 
 // A CRUDE AWAKENING
@@ -100,7 +101,7 @@ type IComponent interface {
 	X() int
 	Y() int
 	Step() bool
-	ToString() string
+	ToString(x, y int) string
 	Add(float64)
 	Directions() []int
 }
@@ -170,15 +171,15 @@ func (c *Connection) Y() int {
 	return c.y
 }
 
-func (c *Connection) ToString() string {
+func (c *Connection) ToString(x, y int) string {
 	if c.energy == 0 {
-		ret := ""
+		ret := " "
 		for i := range c.directions {
 			ret += DirectionName[c.directions[i]]
 		}
 		return ret
 	}
-	return fmt.Sprintf("%.1f", c.energy)
+	return fmt.Sprintf("%.1f", c.energy) // TODO: PRINT BETTER
 }
 
 // ================
@@ -190,7 +191,7 @@ func (g *Generator) Step() bool {
 	return false
 }
 
-func (g *Generator) ToString() string {
+func (g *Generator) ToString(x, y int) string {
 	return "1"
 }
 
@@ -212,17 +213,39 @@ func main() {
 
 func printGrid(grid IGrid, iter int) {
 	fmt.Printf("Grid, iter %v\n", iter)
-	for x := range gridW {
-		for y := range gridH {
-			c := grid.Get(x, y)
-			str := "|   "
-			if c != nil {
-				str = fmt.Sprintf(" %v ", c.ToString())
+	cellSize := 3
+	str := strings.Builder{}
+	for y := range gridW * cellSize {
+		for x := range gridH * cellSize {
+			gx, gy := x/cellSize, y/cellSize
+			cx, cy := x%cellSize, y%cellSize
+			if cx == 0 {
+				str.WriteString("|")
+				if (gx+gy)%2 == 1 {
+					ci := 30
+					str.WriteString(fmt.Sprintf("\u001b[48;2;%v;%v;%vm", ci, ci, ci))
+				}
+			} else {
+				str.WriteString(",")
 			}
-			fmt.Print(str)
+
+			c := grid.Get(gx, gy)
+			if c != nil {
+				str.WriteString(fmt.Sprintf("\u001b[48;2;%v;%v;%vm", 80, 40, 0))
+				str.WriteString(c.ToString(cx, cy))
+			} else {
+				str.WriteString(" ")
+			}
+			if cx == cellSize-1 {
+				str.WriteString("\u001b[0m")
+			}
+			if x == gridH*cellSize-1 {
+				str.WriteString("|")
+			}
 		}
-		fmt.Println("")
+		str.WriteString("\n")
 	}
+	fmt.Println(str.String())
 }
 
 func Assert(b bool) {
