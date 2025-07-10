@@ -8,9 +8,11 @@ import (
 // A CRUDE AWAKENING
 
 const (
-	gridW   = 30
-	gridH   = 30
-	maxIter = 10
+	gridW    = 10
+	gridH    = 10
+	cellSize = 4
+	strWidth = 4
+	maxIter  = 10
 )
 
 // ================
@@ -172,14 +174,21 @@ func (c *Connection) Y() int {
 }
 
 func (c *Connection) ToString(x, y int) string {
-	if c.energy == 0 {
-		ret := " "
-		for i := range c.directions {
-			ret += DirectionName[c.directions[i]]
+	switch {
+	case x == 0 && y == 0:
+		return fmt.Sprintf("%.1f", c.energy)
+	case x == 1 && y == 0:
+		if len(c.directions) > 0 {
+			ret := " "
+			for i := range c.directions {
+				ret += DirectionName[c.directions[i]]
+			}
+			return ret
+		} else {
+			return "-"
 		}
-		return ret
 	}
-	return fmt.Sprintf("%.1f", c.energy) // TODO: PRINT BETTER
+	return ""
 }
 
 // ================
@@ -199,9 +208,15 @@ func (g *Generator) ToString(x, y int) string {
 func main() {
 	grid := MakeGrid(gridW, gridH)
 	// TODO: add components
-	c := &Connection{Component{gridRef: grid, x: 0, y: 0}}
-	grid.Set(c)
+	grid.Set(&Connection{Component{gridRef: grid, x: 0, y: 0}})
+	grid.Set(&Connection{Component{gridRef: grid, x: 1, y: 0}})
+	grid.Set(&Connection{Component{gridRef: grid, x: 2, y: 0}})
+	grid.Set(&Connection{Component{gridRef: grid, x: 3, y: 0}})
+	grid.Set(&Connection{Component{gridRef: grid, x: 4, y: 0}})
+	grid.Set(&Connection{Component{gridRef: grid, x: 0, y: 1}})
+
 	// TODO: add initial energy
+
 	for iter := range maxIter {
 		printGrid(grid, iter)
 		if !grid.Step() {
@@ -213,7 +228,6 @@ func main() {
 
 func printGrid(grid IGrid, iter int) {
 	fmt.Printf("Grid, iter %v\n", iter)
-	cellSize := 3
 	str := strings.Builder{}
 	for y := range gridW * cellSize {
 		for x := range gridH * cellSize {
@@ -225,19 +239,19 @@ func printGrid(grid IGrid, iter int) {
 					ci := 30
 					str.WriteString(fmt.Sprintf("\u001b[48;2;%v;%v;%vm", ci, ci, ci))
 				}
-			} else {
-				str.WriteString(",")
 			}
 
 			c := grid.Get(gx, gy)
 			if c != nil {
 				str.WriteString(fmt.Sprintf("\u001b[48;2;%v;%v;%vm", 80, 40, 0))
-				str.WriteString(c.ToString(cx, cy))
+				str.WriteString(CenterString(c.ToString(cx, cy), strWidth))
 			} else {
-				str.WriteString(" ")
+				str.WriteString(CenterString(" ", strWidth))
 			}
 			if cx == cellSize-1 {
 				str.WriteString("\u001b[0m")
+			} else if cx >= 0 {
+				str.WriteString(",")
 			}
 			if x == gridH*cellSize-1 {
 				str.WriteString("|")
@@ -252,4 +266,8 @@ func Assert(b bool) {
 	if !b {
 		panic("Assertion failed")
 	}
+}
+
+func CenterString(s string, w int) string {
+	return fmt.Sprintf("%*s", -w, fmt.Sprintf("%*s", (w+len(s))/2, s))
 }
