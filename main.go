@@ -8,11 +8,12 @@ import (
 // A CRUDE AWAKENING
 
 const (
-	gridW    = 10
-	gridH    = 10
-	cellSize = 4
-	strWidth = 4
-	maxIter  = 10
+	gridW                = 10
+	gridH                = 10
+	cellSize             = 4
+	strWidth             = 4
+	maxIter              = 10
+	connectionResistance = 1.1
 )
 
 // ================
@@ -25,7 +26,7 @@ const (
 	DirectionLast
 )
 
-var DirectionName = []string{"-", "<", "^", ">", "v"}
+var DirectionName = []string{"-", "<", "v", ">", "^"}
 var DirectionDXY = [][]int{{0, 0}, {-1, 0}, {0, 1}, {1, 0}, {0, -1}}
 
 // ================
@@ -51,6 +52,17 @@ func MakeGrid(w, h int) *Grid {
 		g.c[x] = make([]IComponent, gridH)
 	}
 	return g
+}
+
+func (g *Grid) PrepareStep() {
+	for x := range g.w {
+		for y := range g.w {
+			c := g.c[x][y]
+			if c != nil {
+				c.PrepareStep()
+			}
+		}
+	}
 }
 
 func (g *Grid) Step() bool {
@@ -102,6 +114,7 @@ func (g *Grid) W() int { return g.w }
 type IComponent interface {
 	X() int
 	Y() int
+	PrepareStep()
 	Step() bool
 	ToString(x, y int) string
 	Add(float64)
@@ -123,10 +136,12 @@ type Connection struct {
 	Component
 }
 
-func (c *Connection) Step() bool {
+func (c *Connection) PrepareStep() {
 	c.energy = c.nextEnergy
 	c.nextEnergy = 0
+}
 
+func (c *Connection) Step() bool {
 	if c.energy == 0 {
 		return false
 	}
@@ -135,7 +150,7 @@ func (c *Connection) Step() bool {
 		// Prioritise those without direction
 		for i := DirectionNone + 1; i < DirectionLast; i++ {
 			nb := c.gridRef.Get(c.X()+DirectionDXY[i][0], c.Y()+DirectionDXY[i][1])
-			if nb != nil && len(nb.Directions()) > 0 {
+			if nb != nil && len(nb.Directions()) == 0 {
 				c.directions = append(c.directions, i)
 			}
 		}
@@ -177,6 +192,8 @@ func (c *Connection) ToString(x, y int) string {
 	switch {
 	case x == 0 && y == 0:
 		return fmt.Sprintf("%.1f", c.energy)
+	case x == 0 && y == 1:
+		return fmt.Sprintf("%.1f", c.nextEnergy)
 	case x == 1 && y == 0:
 		if len(c.directions) > 0 {
 			ret := " "
@@ -216,9 +233,12 @@ func main() {
 	grid.Set(&Connection{Component{gridRef: grid, x: 0, y: 1}})
 
 	// TODO: add initial energy
+	c := grid.Get(0, 1)
+	c.Add(1.0)
 
 	for iter := range maxIter {
 		printGrid(grid, iter)
+		grid.PrepareStep()
 		if !grid.Step() {
 			fmt.Println("No further grid changes; Terminating simulation")
 			break
